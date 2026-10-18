@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full bg-slate-900">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mobile Collector - โครงการธงฟ้า</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Kanit', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass-panel { background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        /* สไตล์ตารางรายงานตามแบบราชการ */
+        .report-preview-box { background: #ffffff !important; color: #000000 !important; font-family: 'Sarabun', 'Kanit', sans-serif; }
+        table.report-table { width: 100%; border-collapse: collapse; font-size: 10px; background-color: #ffffff; color: #000000; }
+        table.report-table th, table.report-table td { border: 1px solid #000000; padding: 4px 3px; text-align: center; vertical-align: middle; }
+        table.report-table th { background-color: #f8fafc; font-weight: bold; }
+        .text-left-custom { text-align: left !important; padding-left: 5px !important; }
+        .text-right-custom { text-align: right !important; padding-right: 5px !important; }
+    </style>
+</head>
+<body class="h-full flex flex-col justify-between antialiased">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-4 left-4 right-4 z-50 transform -translate-y-32 opacity-0 transition-all duration-300 bg-emerald-600 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 border border-emerald-400/30">
+        <i class="fa-solid fa-circle-check text-xl flex-shrink-0"></i>
+        <div>
+            <div class="font-bold text-sm" id="toastTitle">สำเร็จ</div>
+            <div class="text-xs text-emerald-100" id="toastMessage">ดำเนินการเรียบร้อยแล้ว</div>
+        </div>
+    </div>
+
+    <!-- Header Navbar -->
+    <header class="glass-panel sticky top-0 z-40 px-4 py-3 border-b border-slate-700/60 flex justify-between items-center shadow-lg">
+        <div class="flex items-center space-x-2.5 overflow-hidden">
+            <div class="w-9 h-9 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 font-bold text-base flex-shrink-0 shadow-inner">
+                <i class="fa-solid fa-mobile-screen-button"></i>
+            </div>
+            <div class="truncate">
+                <h1 class="text-sm font-bold text-white truncate">ธงฟ้า Mobile Collector</h1>
+                <p class="text-[10px] text-slate-400 truncate" id="currentFileName">ยังไม่ได้โหลดไฟล์ JSON</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            <input type="file" id="jsonLoader" accept=".json" class="hidden" onchange="loadJSONFile(event)">
+            <button onclick="document.getElementById('jsonLoader').click()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-2 rounded-xl text-xs flex items-center space-x-1.5 shadow-md active:scale-95 transition">
+                <i class="fa-solid fa-folder-open"></i><span>โหลด JSON</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-md w-full mx-auto p-4 space-y-4 overflow-y-auto pb-24">
+        
+        <!-- Step 1: Select Selling Point -->
+        <div class="glass-panel p-4 rounded-2xl space-y-3 shadow-xl">
+            <label class="block text-xs font-bold text-blue-300 uppercase tracking-wider"><i class="fa-solid fa-map-location-dot mr-1"></i> 1. เลือกจุดจำหน่ายสินค้า</label>
+            <select id="selectSellingPoint" onchange="onSelectSellingPoint()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white font-medium focus:outline-none focus:border-blue-500 shadow-inner">
+                <option value="">-- กรุณาโหลดและเลือกจุดจำหน่าย --</option>
+            </select>
+            <div class="flex items-center justify-between pt-1">
+                <span class="text-[11px] text-slate-400">สถานะ: <span id="spStatusBadge" class="font-bold text-amber-400">-</span></span>
+                <button onclick="toggleSpStatus()" id="btnToggleStatus" class="text-[11px] px-3 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-blue-300 font-medium transition active:scale-95">
+                    เปลี่ยนสถานะเป็น "ดำเนินการแล้ว"
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 2: Record Sales Quantities -->
+        <div class="glass-panel p-4 rounded-2xl space-y-3 shadow-xl">
+            <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
+                <h3 class="text-xs font-bold text-white uppercase tracking-wider"><i class="fa-solid fa-boxes-stacked mr-1 text-sky-400"></i> 2. บันทึกจำนวนสินค้าขายได้</h3>
+                <span class="text-[10px] text-slate-400" id="productCountLabel">0 รายการ</span>
+            </div>
+            
+            <div id="productInputsContainer" class="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                <p class="text-xs text-slate-500 text-center py-6">โปรดเลือกจุดจำหน่ายด้านบนก่อน</p>
+            </div>
+
+            <button onclick="saveCurrentSessionData()" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold py-3 rounded-xl text-xs shadow-lg shadow-emerald-600/20 transition flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-floppy-disk"></i><span>บันทึกข้อมูลจุดนี้ลงระบบ</span>
+            </button>
+        </div>
+
+        <!-- Step 3: Official Report Preview (ตามแบบฟอร์มราชการ 100%) -->
+        <div class="glass-panel p-4 rounded-2xl space-y-3 shadow-xl">
+            <h3 class="text-xs font-bold text-blue-300 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-700/60 pb-2">
+                <i class="fa-solid fa-file-lines text-blue-400"></i> 3. พรีวิวรายงานตามแบบราชการ
+            </h3>
+            
+            <!-- กล่องพรีวิวฟอร์มเอกสาร -->
+            <div class="report-preview-box p-3 rounded-xl overflow-x-auto shadow-inner">
+                <div class="text-center font-bold text-black text-xs mb-2">
+                    <div id="previewLocTitle">ธงฟ้า ณ จุดจำหน่าย</div>
+                    <div id="previewDateTitle" class="text-[10px] text-slate-700">วันที่ -</div>
+                </div>
+
+                <!-- ตารางรายการสินค้า -->
+                <table class="report-table mb-2">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%;">ที่</th>
+                            <th style="width: 18%;">สินค้า</th>
+                            <th style="width: 8%;">จำนวน</th>
+                            <th style="width: 7%;">หน่วย</th>
+                            <th style="width: 8%;">ราคาตลาด</th>
+                            <th style="width: 8%;">ราคาทุน</th>
+                            <th style="width: 8%;">ราคาธงฟ้า</th>
+                            <th style="width: 8%;">ลดราคา(ทุน)</th>
+                            <th style="width: 8%;">ลดค่าครองชีพ</th>
+                            <th style="width: 7%;">ร้อยละ</th>
+                            <th style="width: 15%;">มูลค่าจำหน่าย</th>
+                        </tr>
+                    </thead>
+                    <tbody id="previewProductTbody">
+                        <tr><td colspan="11" class="text-center py-3 text-slate-500">ยังไม่มีข้อมูลสินค้า</td></tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="10" class="text-right-custom font-bold">รวมค่าชดเชยทั้งสิ้น</td>
+                            <td id="sumTotalCompCell" class="text-right-custom font-bold">0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <!-- ตารางค่าใช้จ่ายบริหารโครงการ -->
+                <div class="text-[10px] font-bold text-black mb-1">ค่าบริหารจัดการโครงการ</div>
+                <table class="report-table mb-2">
+                    <thead>
+                        <tr>
+                            <th style="width: 10%;">ที่</th>
+                            <th style="width: 65%;">รายการค่าใช้จ่าย</th>
+                            <th style="width: 25%;">จำนวนเงิน (บาท)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="previewExpenseTbody">
+                        <tr><td colspan="3" class="text-center py-2 text-slate-500">ไม่มีข้อมูลค่าใช้จ่าย</td></tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2" class="text-right-custom font-bold">รวมค่าใช้จ่าย</td>
+                            <td id="sumExpenseCell" class="text-right-custom font-bold">0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <div class="flex justify-between items-center text-[10px] text-black font-bold pt-1 border-t border-slate-300">
+                    <span>สัดส่วนราคาชดเชยต่อยอดขาย:</span>
+                    <span id="ratioDisplayCell" class="font-mono text-xs">0.00000000</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Export Updated JSON File -->
+        <div class="glass-panel p-4 rounded-2xl space-y-2.5 shadow-xl border-blue-500/30">
+            <h3 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <i class="fa-solid fa-file-arrow-down text-blue-400"></i> 4. ส่งออกไฟล์ JSON กลับเข้าระบบใหญ่
+            </h3>
+            <p class="text-[11px] text-slate-400 leading-relaxed">บันทึกไฟล์ทับลงเครื่องเพื่อนำกลับไปเปิดต่อในระบบคอมพิวเตอร์หลัก</p>
+            <button onclick="exportUpdatedJSON()" class="w-full bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold py-3 rounded-xl text-xs shadow-lg shadow-blue-600/30 transition flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-download"></i><span>ดาวน์โหลดไฟล์ JSON (อัปเดตแล้ว)</span>
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Footer Mobile Info -->
+    <footer class="fixed bottom-0 left-0 right-0 glass-panel border-t border-slate-700/60 p-3 text-center text-[10px] text-slate-400 z-30">
+        ระบบบันทึกภาคสนามโครงการธงฟ้า (Mobile Collector V.2)
+    </footer>
+
+    <!-- Script Logic -->
+    <script>
+        let db = {
+            entrepreneurs: [],
+            sellingPoints: [],
+            masterProducts: [
+                { id: 1, name: "ไข่ไก่ เบอร์ 3", unit: "แผง", marketPrice: 135.00, costPrice: 132.00, thongfaPrice: 85.00 },
+                { id: 2, name: "ข้าวสาร", unit: "ถุง", marketPrice: 149.00, costPrice: 139.00, thongfaPrice: 100.00 },
+                { id: 3, name: "น้ำมัน", unit: "ขวด", marketPrice: 52.00, costPrice: 51.00, thongfaPrice: 35.00 }
+            ],
+            masterExpenses: [
+                { name: "ค่าเช่ารถบรรทุกสินค้า พร้อมพนักงานขับรถ และน้ำมันเชื้อเพลิง จำนวน 2 วัน เป็นเงิน", amount: 0 },
+                { name: "ค่าจ้างพนักงานยกของ จำนวน 2 คน ๆ ละ 350 บาท จำนวน 2 วัน", amount: 0 },
+                { name: "ค่าจ้างพนักงานขาย จำนวน 2 คน ๆ ละ 350 บาท จำนวน 2 วัน", amount: 0 }
+            ],
+            sessions: []
+        };
+
+        let selectedSpId = "";
+        let loadedFileName = "ยังไม่ได้โหลดไฟล์ JSON";
+
+        window.onload = function() {
+            const saved = localStorage.getItem('blue_flag_mobile_db');
+            if (saved) {
+                try {
+                    db = JSON.parse(saved);
+                    initDropdown();
+                    showToast("โหลดข้อมูลสำเร็จ", "ดึงข้อมูลที่บันทึกไว้ในเครื่องเรียบร้อย");
+                } catch(e) {}
+            }
+        };
+
+        function showToast(title, message, isError = false) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastTitle').innerText = title;
+            document.getElementById('toastMessage').innerText = message;
+            toast.className = `fixed top-4 left-4 right-4 z-50 transform transition-all duration-300 ${isError ? 'bg-rose-600 border-rose-400/30' : 'bg-emerald-600 border-emerald-400/30'} text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center space-x-3`;
+            toast.classList.remove('-translate-y-32', 'opacity-0');
+            setTimeout(() => toast.classList.add('-translate-y-32', 'opacity-0'), 3500);
+        }
+
+        function loadJSONFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            loadedFileName = file.name;
+            document.getElementById('currentFileName').innerText = loadedFileName;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const imported = JSON.parse(evt.target.result);
+                    db.sellingPoints = imported.sellingPoints || [];
+                    db.entrepreneurs = imported.entrepreneurs || [];
+                    db.masterProducts = imported.masterProducts || db.masterProducts;
+                    db.masterExpenses = imported.masterExpenses || db.masterExpenses;
+                    db.sessions = imported.sessions || [];
+
+                    db.sellingPoints.forEach(sp => {
+                        if (!db.sessions.some(s => s.sellingPointId === sp.id || s.title === sp.name)) {
+                            db.sessions.push({
+                                id: 'session_' + sp.id,
+                                sellingPointId: sp.id,
+                                title: sp.name,
+                                location: sp.name,
+                                date: sp.datetime ? sp.datetime.split('T')[0] : '',
+                                salesQuantities: {},
+                                expenses: JSON.parse(JSON.stringify(db.masterExpenses))
+                            });
+                        }
+                    });
+
+                    saveToLocalStorage();
+                    initDropdown();
+                    showToast("สำเร็จ", `โหลดไฟล์ ${file.name} เรียบร้อยแล้ว`);
+                } catch(err) {
+                    showToast("เกิดข้อผิดพลาด", "รูปแบบไฟล์ JSON ไม่ถูกต้อง", true);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('blue_flag_mobile_db', JSON.stringify(db));
+        }
+
+        function initDropdown() {
+            const sel = document.getElementById('selectSellingPoint');
+            if (!sel) return;
+            sel.innerHTML = '<option value="">-- กรุณาเลือกจุดจำหน่าย --</option>' + db.sellingPoints.map(sp => {
+                const statusIcon = sp.status === 'ดำเนินการแล้ว' ? '🟢' : '🟠';
+                return `<option value="${sp.id}">${statusIcon} ${sp.name}</option>`.trim();
+            }).join('');
+
+            if (db.sellingPoints.length > 0) {
+                sel.value = db.sellingPoints[0].id;
+                onSelectSellingPoint();
+            }
+        }
+
+        function onSelectSellingPoint() {
+            const sel = document.getElementById('selectSellingPoint');
+            selectedSpId = sel.value;
+            const container = document.getElementById('productInputsContainer');
+            const badge = document.getElementById('spStatusBadge');
+            const btnToggle = document.getElementById('btnToggleStatus');
+
+            if (!selectedSpId) {
+                container.innerHTML = '<p class="text-xs text-slate-500 text-center py-6">โปรดเลือกจุดจำหน่ายก่อน</p>';
+                badge.textContent = '-';
+                clearReportPreview();
+                return;
+            }
+
+            const sp = db.sellingPoints.find(s => s.id === selectedSpId);
+            badge.textContent = sp.status || 'ยังไม่ดำเนินการ';
+            badge.className = sp.status === 'ดำเนินการแล้ว' ? 'font-bold text-emerald-400' : 'font-bold text-amber-400';
+            btnToggle.textContent = sp.status === 'ดำเนินการแล้ว' ? 'เปลี่ยนเป็น "ยังไม่ดำเนินการ"' : 'เปลี่ยนเป็น "ดำเนินการแล้ว"';
+
+            let session = db.sessions.find(s => s.sellingPointId === selectedSpId || s.title === sp.name);
+            if (!session) {
+                session = {
+                    id: 'session_' + sp.id,
+                    sellingPointId: sp.id,
+                    title: sp.name,
+                    location: sp.name,
+                    date: sp.datetime ? sp.datetime.split('T')[0] : '',
+                    salesQuantities: {},
+                    expenses: JSON.parse(JSON.stringify(db.masterExpenses || []))
+                };
+                db.sessions.push(session);
+            }
+
+            document.getElementById('productCountLabel').innerText = `${db.masterProducts.length} รายการ`;
+
+            container.innerHTML = db.masterProducts.map(p => {
+                let qty = session.salesQuantities[p.id] !== undefined ? session.salesQuantities[p.id] : (session.salesQuantities[String(p.id)] || 0);
+                return `
+                    <div class="bg-slate-900/70 p-3 rounded-xl border border-slate-800 space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <span class="font-semibold text-white">${p.name}</span>
+                            <span class="text-[10px] text-blue-300">ธงฟ้า ฿${p.thongfaPrice} (ตลาด ฿${p.marketPrice})</span>
+                        </div>
+                        <div class="flex items-center space-x-2 pt-1">
+                            <input type="number" min="0" value="${qty}" oninput="updateTempQty(${p.id}, this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white font-mono text-right focus:outline-none focus:border-blue-500 shadow-inner" placeholder="0">
+                            <span class="text-xs text-slate-400 w-12 text-right">${p.unit}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            renderOfficialReportPreview(session, sp);
+        }
+
+        function updateTempQty(productId, val) {
+            let session = db.sessions.find(s => s.sellingPointId === selectedSpId || s.title === (db.sellingPoints.find(p=>p.id===selectedSpId)?.name));
+            const sp = db.sellingPoints.find(s => s.id === selectedSpId);
+            if (session) {
+                session.salesQuantities[productId] = parseFloat(val) || 0;
+                renderOfficialReportPreview(session, sp);
+            }
+        }
+
+        function toggleSpStatus() {
+            if (!selectedSpId) return;
+            const sp = db.sellingPoints.find(s => s.id === selectedSpId);
+            if (sp) {
+                sp.status = sp.status === 'ดำเนินการแล้ว' ? 'ยังไม่ดำเนินการ' : 'ดำเนินการแล้ว';
+                onSelectSellingPoint();
+                initDropdown();
+                document.getElementById('selectSellingPoint').value = selectedSpId;
+                showToast("อัปเดตสถานะ", `เปลี่ยนสถานะเป็น "${sp.status}" เรียบร้อย`);
+            }
+        }
+
+        function renderOfficialReportPreview(session, sp) {
+            document.getElementById('previewLocTitle').innerText = `ธงฟ้า ณ ${sp.name}`;
+            document.getElementById('previewDateTitle').innerText = `วันที่ ${sp.datetime || '-'}`;
+
+            const productTbody = document.getElementById('previewProductTbody');
+            let sumComp = 0, sumSales = 0;
+
+            productTbody.innerHTML = db.masterProducts.map((p, i) => {
+                let qty = parseFloat(session.salesQuantities[p.id] || session.salesQuantities[String(p.id)] || 0);
+                let redCost = p.costPrice - p.thongfaPrice;
+                let costLiving = p.marketPrice - p.thongfaPrice;
+                let percent = p.marketPrice > 0 ? ((costLiving / p.marketPrice) * 100).toFixed(2) : '0.00';
+                let comp = redCost * qty;
+                let sales = p.thongfaPrice * qty;
+
+                sumComp += comp;
+                sumSales += sales;
+
+                return `
+                    <tr>
+                        <td>${i+1}</td>
+                        <td class="text-left-custom">${p.name}</td>
+                        <td>${qty.toLocaleString()}</td>
+                        <td>${p.unit}</td>
+                        <td class="text-right-custom">${p.marketPrice.toFixed(2)}</td>
+                        <td class="text-right-custom">${p.costPrice.toFixed(2)}</td>
+                        <td class="text-right-custom">${p.thongfaPrice.toFixed(2)}</td>
+                        <td class="text-right-custom">${redCost.toFixed(2)}</td>
+                        <td class="text-right-custom">${costLiving.toFixed(2)}</td>
+                        <td>${percent}</td>
+                        <td class="text-right-custom">${sales.toLocaleString('th-TH', {minimumFractionDigits:2})}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            let totalExpense = session.expenses ? session.expenses.reduce((acc, x) => acc + (x.amount || 0), 0) : 0;
+            let grandTotalComp = sumComp + totalExpense;
+
+            document.getElementById('sumTotalCompCell').innerText = grandTotalComp.toLocaleString('th-TH', {minimumFractionDigits:2});
+
+            const expenseTbody = document.getElementById('previewExpenseTbody');
+            if (session.expenses && session.expenses.length > 0) {
+                expenseTbody.innerHTML = session.expenses.map((exp, i) => `
+                    <tr>
+                        <td>${i+1}</td>
+                        <td class="text-left-custom">${exp.name}</td>
+                        <td class="text-right-custom">${(exp.amount || 0).toLocaleString('th-TH', {minimumFractionDigits:2})}</td>
+                    </tr>
+                `).join('');
+            } else {
+                expenseTbody.innerHTML = `<tr><td colspan="3" class="text-center py-2 text-slate-500">ไม่มีค่าใช้จ่าย</td></tr>`;
+            }
+
+            document.getElementById('sumExpenseCell').innerText = totalExpense.toLocaleString('th-TH', {minimumFractionDigits:2});
+
+            let ratio = sumSales > 0 ? (grandTotalComp / sumSales).toFixed(8) : "0.00000000";
+            document.getElementById('ratioDisplayCell').innerText = ratio;
+        }
+
+        function clearReportPreview() {
+            document.getElementById('previewLocTitle').innerText = 'ธงฟ้า ณ จุดจำหน่าย';
+            document.getElementById('previewDateTitle').innerText = 'วันที่ -';
+            document.getElementById('previewProductTbody').innerHTML = `<tr><td colspan="11" class="text-center py-3 text-slate-500">ยังไม่มีข้อมูลสินค้า</td></tr>`;
+            document.getElementById('previewExpenseTbody').innerHTML = `<tr><td colspan="3" class="text-center py-2 text-slate-500">ไม่มีข้อมูลค่าใช้จ่าย</td></tr>`;
+            document.getElementById('sumTotalCompCell').innerText = '0.00';
+            document.getElementById('sumExpenseCell').innerText = '0.00';
+            document.getElementById('ratioDisplayCell').innerText = '0.00000000';
+        }
+
+        function saveCurrentSessionData() {
+            if (!selectedSpId) {
+                showToast("แจ้งเตือน", "กรุณาเลือกจุดจำหน่ายก่อนบันทึก", true);
+                return;
+            }
+
+            const sp = db.sellingPoints.find(s => s.id === selectedSpId);
+            if (sp) {
+                sp.status = 'ดำเนินการแล้ว';
+            }
+
+            saveToLocalStorage();
+            onSelectSellingPoint();
+            initDropdown();
+            document.getElementById('selectSellingPoint').value = selectedSpId;
+            showToast("บันทึกสำเร็จ", "บันทึกจำนวนสินค้าลงในหน่วยความจำเรียบร้อย");
+        }
+
+        function exportUpdatedJSON() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const timestamp = `${year}-${month}-${day}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`;
+            const filename = `blue_flag_mobile_updated_${timestamp}.json`;
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
+            const a = document.createElement('a');
+            a.href = dataStr;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            showToast("ดาวน์โหลดสำเร็จ", `บันทึกไฟล์ ${filename} เรียบร้อยแล้ว`);
+        }
+    </script>
+</body>
+</html>
