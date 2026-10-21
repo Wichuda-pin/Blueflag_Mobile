@@ -96,7 +96,7 @@
                 <span class="text-[10px] text-slate-400" id="productCountLabel">0 รายการ</span>
             </div>
             
-            <!-- ส่วนเพิ่มรูปภาพแบบ Turbo Compression (แก้ไขให้เสถียรและอัปโหลดติด 100%) -->
+            <!-- ส่วนเพิ่มรูปภาพแบบ Turbo Compression (แก้ไขให้สะสมรูปเก่าและใหม่รวมกันได้อย่างถูกต้อง 100%) -->
             <div class="space-y-2 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
                 <div class="flex justify-between items-center">
                     <label class="text-[11px] font-semibold text-blue-300"><i class="fa-solid fa-camera mr-1"></i> รูปภาพหลักฐานประจำจุดจำหน่าย</label>
@@ -217,7 +217,7 @@
 
     <!-- Footer Mobile Info -->
     <footer class="fixed bottom-0 left-0 right-0 glass-panel border-t border-slate-700/60 p-3 text-center text-[10px] text-slate-400 z-30">
-        ระบบบันทึกภาคสนามโครงการธงฟ้า (Mobile Collector V.6 - Stable Turbo)
+        ระบบบันทึกภาคสนามโครงการธงฟ้า (Mobile Collector V.7 - Multi-Image Safe)
     </footer>
 
     <!-- Script Logic -->
@@ -418,7 +418,7 @@
             }
         }
 
-        // ฟังก์ชันอัปโหลดและย่อรูปภาพแบบเสถียร (รองรับการประมวลผลทีละรูปอย่างแม่นยำ)
+        // ฟังก์ชันอัปโหลดและย่อรูปภาพแบบสะสมข้อมูล (คงรูปเก่าไว้ครบถ้วนและเพิ่มรูปใหม่ต่อท้าย)
         function turboCompressAndAddImages(event) {
             if (!selectedSpId) {
                 showToast("แจ้งเตือน", "กรุณาเลือกจุดจำหน่ายก่อนแนบรูปภาพ", true);
@@ -435,7 +435,7 @@
             }
             if (!sp.images) sp.images = [];
 
-            showLoading("กำลังประมวลผลรูปภาพ", "กำลังย่อขนาดและแนบไฟล์หลักฐาน...");
+            showLoading("กำลังประมวลผลรูปภาพ", "กำลังย่อขนาดและรวมไฟล์หลักฐานใหม่...");
 
             let processed = 0;
             const targetSize = 800;
@@ -471,6 +471,7 @@
                             ctx.drawImage(img, 0, 0, width, height);
 
                             const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65);
+                            // เพิ่มรูปใหม่ต่อท้ายอาร์เรย์รูปเดิมที่มีอยู่โดยไม่ลบของเก่า
                             sp.images.push(compressedDataUrl);
                         } catch (err) {
                             console.error("Image processing error:", err);
@@ -481,7 +482,7 @@
                             hideLoading();
                             renderImagePreviews(sp);
                             saveToLocalStorageSafe();
-                            showToast("สำเร็จ", "แนบรูปภาพเรียบร้อยแล้ว");
+                            showToast("สำเร็จ", "เพิ่มรูปภาพใหม่รวมกับรูปเดิมเรียบร้อยแล้ว");
                         }
                     };
                     img.onerror = function() {
