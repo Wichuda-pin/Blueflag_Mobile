@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- JSZip CDN สำหรับจัดการไฟล์ ZIP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         body { font-family: 'Kanit', sans-serif; background-color: #0f172a; color: #f8fafc; }
         .glass-panel { background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
@@ -23,7 +25,6 @@
         .text-left-custom { text-align: left !important; padding-left: 5px !important; }
         .text-right-custom { text-align: right !important; padding-right: 5px !important; }
         
-        /* เส้นใต้ 2 เส้นแบบราชการ */
         .double-underline {
             text-decoration: underline;
             text-decoration-style: double;
@@ -41,6 +42,17 @@
         </div>
     </div>
 
+    <!-- Loading Modal -->
+    <div id="loadingModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[999999] flex items-center justify-center hidden p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-6 text-center max-w-xs w-full space-y-3">
+            <div class="inline-block p-3 bg-indigo-500/10 text-indigo-400 rounded-xl mb-1">
+                <i class="fa-solid fa-spinner fa-spin text-2xl"></i>
+            </div>
+            <div class="font-bold text-white text-sm" id="loadingTitle">กำลังประมวลผล...</div>
+            <div class="text-xs text-slate-400" id="loadingMessage">กรุณารอสักครู่ ระบบกำลังอ่านไฟล์ ZIP</div>
+        </div>
+    </div>
+
     <!-- Header Navbar -->
     <header class="glass-panel sticky top-0 z-40 px-4 py-3 border-b border-slate-700/60 flex justify-between items-center shadow-lg">
         <div class="flex items-center space-x-2.5 overflow-hidden">
@@ -49,13 +61,13 @@
             </div>
             <div class="truncate">
                 <h1 class="text-sm font-bold text-white truncate">ธงฟ้า Mobile Collector</h1>
-                <p class="text-[10px] text-slate-400 truncate" id="currentFileName">ยังไม่ได้โหลดไฟล์ JSON</p>
+                <p class="text-[10px] text-slate-400 truncate" id="currentFileName">ยังไม่ได้โหลดไฟล์ ZIP</p>
             </div>
         </div>
         <div class="flex items-center space-x-2">
-            <input type="file" id="jsonLoader" accept=".json" class="hidden" onchange="loadJSONFile(event)">
+            <input type="file" id="jsonLoader" accept=".zip, .json" class="hidden" onchange="loadBackupFile(event)">
             <button onclick="document.getElementById('jsonLoader').click()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-2 rounded-xl text-xs flex items-center space-x-1.5 shadow-md active:scale-95 transition">
-                <i class="fa-solid fa-folder-open"></i><span>โหลด JSON</span>
+                <i class="fa-solid fa-file-zipper"></i><span>ดึงข้อมูล ZIP / JSON</span>
             </button>
         </div>
     </header>
@@ -77,14 +89,28 @@
             </div>
         </div>
 
-        <!-- Step 2: Record Sales Quantities -->
-        <div class="glass-panel p-4 rounded-2xl space-y-3 shadow-xl">
+        <!-- Step 2: Record Sales Quantities & Images -->
+        <div class="glass-panel p-4 rounded-2xl space-y-4 shadow-xl">
             <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
-                <h3 class="text-xs font-bold text-white uppercase tracking-wider"><i class="fa-solid fa-boxes-stacked mr-1 text-sky-400"></i> 2. บันทึกจำนวนสินค้าขายได้</h3>
+                <h3 class="text-xs font-bold text-white uppercase tracking-wider"><i class="fa-solid fa-boxes-stacked mr-1 text-sky-400"></i> 2. บันทึกจำนวนสินค้า & รูปภาพ</h3>
                 <span class="text-[10px] text-slate-400" id="productCountLabel">0 รายการ</span>
             </div>
             
-            <div id="productInputsContainer" class="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+            <!-- ส่วนเพิ่มรูปภาพแบบ Turbo Compression (แก้ไขให้เสถียรและอัปโหลดติด 100%) -->
+            <div class="space-y-2 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                <div class="flex justify-between items-center">
+                    <label class="text-[11px] font-semibold text-blue-300"><i class="fa-solid fa-camera mr-1"></i> รูปภาพหลักฐานประจำจุดจำหน่าย</label>
+                    <button type="button" onclick="document.getElementById('spImagesInput').click()" class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg transition active:scale-95 shadow">
+                        <i class="fa-solid fa-plus mr-1"></i> เพิ่มรูปภาพ
+                    </button>
+                    <input type="file" id="spImagesInput" multiple accept="image/*" class="hidden" onchange="turboCompressAndAddImages(event)">
+                </div>
+                <div id="imagePreviewContainer" class="flex flex-wrap gap-2 pt-1">
+                    <p class="text-[10px] text-slate-500 italic">ยังไม่มีรูปภาพ</p>
+                </div>
+            </div>
+
+            <div id="productInputsContainer" class="space-y-2.5 max-h-60 overflow-y-auto pr-1">
                 <p class="text-xs text-slate-500 text-center py-6">โปรดเลือกจุดจำหน่ายด้านบนก่อน</p>
             </div>
 
@@ -99,14 +125,12 @@
                 <i class="fa-solid fa-file-lines text-blue-400"></i> 3. พรีวิวรายงานตามแบบราชการ
             </h3>
             
-            <!-- กล่องพรีวิวฟอร์มเอกสาร -->
             <div class="report-preview-box p-3 rounded-xl overflow-x-auto shadow-inner">
                 <div class="text-center font-bold text-black text-xs mb-3">
                     <div id="previewLocTitle" class="text-sm">ณ -</div>
                     <div id="previewDateTitle" class="text-xs">วันที่ -</div>
                 </div>
 
-                <!-- ตารางรายการสินค้าหลัก -->
                 <table class="report-table mb-2">
                     <thead>
                         <tr>
@@ -151,7 +175,6 @@
                 </table>
 
                 <div class="mt-4 flex flex-row items-start justify-between gap-2">
-                    <!-- ตารางค่าใช้จ่ายบริหารโครงการ (ซ้าย) -->
                     <div class="w-3/4">
                         <table class="report-table">
                             <thead>
@@ -172,24 +195,21 @@
                             </tfoot>
                         </table>
                     </div>
-
-                    <!-- แสดงตัวเลขสัดส่วนรวมด้านขวามือ (คำนวณจาก (รวมลดค่าครองชีพ / รวมมูลค่าตลาด) * 100) -->
                     <div class="w-1/4 pt-6 text-right pr-2">
                         <span id="ratioDisplayCell" class="font-bold text-xs text-black double-underline">0.00000000</span>
                     </div>
                 </div>
-
             </div>
         </div>
 
-        <!-- Step 4: Export Updated JSON File -->
+        <!-- Step 4: Export Updated ZIP File -->
         <div class="glass-panel p-4 rounded-2xl space-y-2.5 shadow-xl border-blue-500/30">
             <h3 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                <i class="fa-solid fa-file-arrow-down text-blue-400"></i> 4. ส่งออกไฟล์ JSON กลับเข้าระบบใหญ่
+                <i class="fa-solid fa-file-zipper text-blue-400"></i> 4. ส่งออกไฟล์ ZIP กลับเข้าระบบใหญ่
             </h3>
-            <p class="text-[11px] text-slate-400 leading-relaxed">บันทึกไฟล์ทับลงเครื่องเพื่อนำกลับไปเปิดต่อในระบบคอมพิวเตอร์หลัก</p>
-            <button onclick="exportUpdatedJSON()" class="w-full bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold py-3 rounded-xl text-xs shadow-lg shadow-blue-600/30 transition flex items-center justify-center space-x-2">
-                <i class="fa-solid fa-download"></i><span>ดาวน์โหลดไฟล์ JSON (อัปเดตแล้ว)</span>
+            <p class="text-[11px] text-slate-400 leading-relaxed">สำรองข้อมูล ZIP (บรรจุ data.json และโฟลเดอร์รูป) เพื่อนำกลับไปเปิดต่อในระบบคอมพิวเตอร์หลัก</p>
+            <button onclick="exportUpdatedZIP()" class="w-full bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold py-3 rounded-xl text-xs shadow-lg shadow-blue-600/30 transition flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-download"></i><span>สำรองข้อมูล ZIP (พร้อมโฟลเดอร์รูป)</span>
             </button>
         </div>
 
@@ -197,11 +217,23 @@
 
     <!-- Footer Mobile Info -->
     <footer class="fixed bottom-0 left-0 right-0 glass-panel border-t border-slate-700/60 p-3 text-center text-[10px] text-slate-400 z-30">
-        ระบบบันทึกภาคสนามโครงการธงฟ้า (Mobile Collector V.2)
+        ระบบบันทึกภาคสนามโครงการธงฟ้า (Mobile Collector V.6 - Stable Turbo)
     </footer>
 
     <!-- Script Logic -->
     <script>
+        const default9Expenses = [
+            { name: "ค่าเช่ารถบรรทุกสินค้า พร้อมพนักงานขับรถ และน้ำมันเชื้อเพลิง จำนวน 2 วัน เป็นเงิน", amount: 0 },
+            { name: "ค่าจ้างพนักงานยกของ จำนวน 2 คน ๆ ละ 350 บาท จำนวน 2 วัน (350 x 2 x 2)", amount: 0 },
+            { name: "ค่าจ้างพนักงานขาย จำนวน 2 คน ๆ ละ 350 บาท จำนวน 2 วัน (350 x 2 x 2)", amount: 0 },
+            { name: "ค่าป้ายไวนิลโครงการ ขนาด 1.2 x 2.5 เมตร เป็นเงิน", amount: 0 },
+            { name: "ค่าป้ายราคา เป็นเงิน", amount: 0 },
+            { name: "ค่าป้ายจำนวน", amount: 0 },
+            { name: "ค่าถุงบรรจุสินค้า ขนาด 9 x 18 จำนวน 20 แพ็ค ๆ ละ 50 บาท จำนวน 2 วัน เป็นเงิน", amount: 0 },
+            { name: "ค่าเต็นท์ขนาด 4 x 8 เมตร จำนวน 1 หลัง", amount: 0 },
+            { name: "ค่าโต๊ะพร้อมผ้าปูโต๊ะ จำนวน 8 ชุด ๆ ละ 70 บาท", amount: 0 }
+        ];
+
         let db = {
             entrepreneurs: [],
             sellingPoints: [],
@@ -210,32 +242,21 @@
                 { id: 2, name: "ข้าวสาร", unit: "ถุง", marketPrice: 149.00, costPrice: 139.00, thongfaPrice: 100.00 },
                 { id: 3, name: "น้ำมัน", unit: "ขวด", marketPrice: 52.00, costPrice: 51.00, thongfaPrice: 35.00 }
             ],
-            masterExpenses: [
-                { name: "ค่าเช่ารถบรรทุกสินค้า พร้อมพนักงานขับรถ และน้ำมันเชื้อเพลิง จำนวน 2 วัน เป็นเงิน", amount: 0 },
-                { name: "ค่าจ้างพนักงานยกของ จำนวน 2 คน ๆ ละ 350 บาท จำนวน 2 วัน (350 x 2 x 2)", amount: 0 },
-                { name: "ค่าจ้างพนักงานขาย จำนวน 2 คน ๆ ละ 350 บาท จำนวน 2 วัน (350 x 2 x 2)", amount: 0 },
-                { name: "ค่าป้ายไวนิลโครงการ ขนาด 1.2 x 2.5 เมตร เป็นเงิน", amount: 0 },
-                { name: "ค่าป้ายราคา เป็นเงิน", amount: 0 },
-                { name: "ค่าป้ายจำนวน", amount: 0 },
-                { name: "ค่าถุงบรรจุสินค้า ขนาด 9 x 18 จำนวน 20 แพ็ค ๆ ละ 50 บาท จำนวน 2 วัน เป็นเงิน", amount: 0 },
-                { name: "ค่าเต็นท์ขนาด 4 x 8 เมตร จำนวน 1 หลัง", amount: 0 },
-                { name: "ค่าโต๊ะพร้อมผ้าปูโต๊ะ จำนวน 8 ชุด ๆ ละ 70 บาท", amount: 0 }
-            ],
+            masterExpenses: JSON.parse(JSON.stringify(default9Expenses)),
             sessions: []
         };
 
         let selectedSpId = "";
-        let loadedFileName = "ยังไม่ได้โหลดไฟล์ JSON";
+        let loadedFileName = "ยังไม่ได้โหลดไฟล์ ZIP";
+
+        function sanitizeLocationName(str) {
+            if (!str) return 'จุดจำหน่าย';
+            return str.replace(/^ธงฟ้า\s*ณ\s*/i, '').replace(/^ณ\s*/i, '').trim();
+        }
 
         window.onload = function() {
-            const saved = localStorage.getItem('blue_flag_mobile_db');
-            if (saved) {
-                try {
-                    db = JSON.parse(saved);
-                    initDropdown();
-                    showToast("โหลดข้อมูลสำเร็จ", "ดึงข้อมูลที่บันทึกไว้ในเครื่องเรียบร้อย");
-                } catch(e) {}
-            }
+            loadFromLocalStorage();
+            initDropdown();
         };
 
         function showToast(title, message, isError = false) {
@@ -247,48 +268,140 @@
             setTimeout(() => toast.classList.add('-translate-y-32', 'opacity-0'), 3500);
         }
 
-        function loadJSONFile(event) {
+        function showLoading(title, message) {
+            document.getElementById('loadingTitle').innerText = title;
+            document.getElementById('loadingMessage').innerText = message;
+            document.getElementById('loadingModal').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingModal').classList.add('hidden');
+        }
+
+        function saveToLocalStorageSafe() {
+            try {
+                localStorage.setItem('blue_flag_mobile_db', JSON.stringify(db));
+            } catch (e) {
+                try {
+                    let lightDb = JSON.parse(JSON.stringify(db));
+                    lightDb.sellingPoints.forEach(sp => sp.images = []);
+                    localStorage.setItem('blue_flag_mobile_db', JSON.stringify(lightDb));
+                } catch (err) {}
+            }
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('blue_flag_mobile_db');
+            if (saved) {
+                try {
+                    db = JSON.parse(saved);
+                } catch(e) {}
+            }
+        }
+
+        async function loadBackupFile(event) {
             const file = event.target.files[0];
             if (!file) return;
             loadedFileName = file.name;
             document.getElementById('currentFileName').innerText = loadedFileName;
 
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                try {
-                    const imported = JSON.parse(evt.target.result);
-                    db.sellingPoints = imported.sellingPoints || [];
-                    db.entrepreneurs = imported.entrepreneurs || [];
-                    db.masterProducts = imported.masterProducts || db.masterProducts;
-                    db.masterExpenses = imported.masterExpenses || db.masterExpenses;
-                    db.sessions = imported.sessions || [];
+            showLoading("กำลังโหลดข้อมูล", "กำลังตรวจสอบและอ่านไฟล์...");
 
-                    db.sellingPoints.forEach(sp => {
-                        if (!db.sessions.some(s => s.sellingPointId === sp.id || s.title === sp.name)) {
-                            db.sessions.push({
-                                id: 'session_' + sp.id,
-                                sellingPointId: sp.id,
-                                title: sp.name,
-                                location: sp.name,
-                                date: sp.datetime ? sp.datetime.split('T')[0] : '',
-                                salesQuantities: {},
-                                expenses: JSON.parse(JSON.stringify(db.masterExpenses))
-                            });
+            setTimeout(async () => {
+                if (file.name.endsWith('.zip')) {
+                    try {
+                        const zip = new JSZip();
+                        const zipContent = await zip.loadAsync(file);
+                        
+                        let jsonFile = zipContent.file("data.json");
+                        if (!jsonFile) {
+                            let jsonFiles = Object.keys(zipContent.files).filter(filename => filename.endsWith('data.json'));
+                            if (jsonFiles.length > 0) jsonFile = zipContent.file(jsonFiles[0]);
                         }
-                    });
 
-                    saveToLocalStorage();
-                    initDropdown();
-                    showToast("สำเร็จ", `โหลดไฟล์ ${file.name} เรียบร้อยแล้ว`);
-                } catch(err) {
-                    showToast("เกิดข้อผิดพลาด", "รูปแบบไฟล์ JSON ไม่ถูกต้อง", true);
+                        if (!jsonFile) {
+                            hideLoading();
+                            showToast("ข้อผิดพลาด", "ไม่พบไฟล์ data.json ใน ZIP นี้", true);
+                            return;
+                        }
+
+                        const jsonString = await jsonFile.async("text");
+                        const imported = JSON.parse(jsonString);
+
+                        db.entrepreneurs = imported.entrepreneurs || [];
+                        db.sellingPoints = imported.sellingPoints || [];
+                        db.masterProducts = imported.masterProducts || db.masterProducts;
+                        db.masterExpenses = imported.masterExpenses || db.masterExpenses;
+                        db.sessions = imported.sessions || [];
+
+                        for (let sp of db.sellingPoints) {
+                            if (!sp.images) sp.images = [];
+                            let folderPrefix = `images/selling_point_${sp.id}`;
+                            let imageFiles = Object.keys(zipContent.files).filter(filename => filename.startsWith(folderPrefix) && !zipContent.files[filename].dir);
+                            
+                            if (imageFiles.length > 0) {
+                                sp.images = [];
+                                for (let imgPath of imageFiles) {
+                                    let imgFile = zipContent.file(imgPath);
+                                    let imgBlob = await imgFile.async("blob");
+                                    let base64Img = await new Promise((resolve) => {
+                                        let reader = new FileReader();
+                                        reader.onload = (evt) => resolve(evt.target.result);
+                                        reader.readAsDataURL(imgBlob);
+                                    });
+                                    sp.images.push(base64Img);
+                                }
+                            }
+                        }
+
+                        db.sessions.forEach(s => {
+                            if (s.location) s.location = sanitizeLocationName(s.location);
+                        });
+
+                        db.sellingPoints.forEach(sp => {
+                            if (!db.sessions.some(s => s.sellingPointId === sp.id || s.title === sp.name)) {
+                                db.sessions.push({
+                                    id: 'session_' + sp.id,
+                                    sellingPointId: sp.id,
+                                    title: sp.name,
+                                    location: sanitizeLocationName(sp.name),
+                                    date: sp.datetime ? sp.datetime.split('T')[0] : '',
+                                    salesQuantities: {},
+                                    expenses: JSON.parse(JSON.stringify(db.masterExpenses))
+                                });
+                            }
+                        });
+
+                        saveToLocalStorageSafe();
+                        initDropdown();
+                        hideLoading();
+                        showToast("สำเร็จ", `ดึงข้อมูลจาก ZIP ${file.name} เรียบร้อยแล้ว`);
+                    } catch(err) {
+                        hideLoading();
+                        showToast("เกิดข้อผิดพลาด", "ไม่สามารถอ่านไฟล์ ZIP ได้: " + err.message, true);
+                    }
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        try {
+                            const imported = JSON.parse(evt.target.result);
+                            db.sellingPoints = imported.sellingPoints || [];
+                            db.entrepreneurs = imported.entrepreneurs || [];
+                            db.masterProducts = imported.masterProducts || db.masterProducts;
+                            db.masterExpenses = imported.masterExpenses || db.masterExpenses;
+                            db.sessions = imported.sessions || [];
+                            saveToLocalStorageSafe();
+                            initDropdown();
+                            hideLoading();
+                            showToast("สำเร็จ", `ดึงข้อมูลจาก JSON ${file.name} เรียบร้อยแล้ว`);
+                        } catch(err) {
+                            hideLoading();
+                            showToast("เกิดข้อผิดพลาด", "รูปแบบไฟล์ JSON ไม่ถูกต้อง", true);
+                        }
+                    };
+                    reader.readAsText(file);
                 }
-            };
-            reader.readAsText(file);
-        }
-
-        function saveToLocalStorage() {
-            localStorage.setItem('blue_flag_mobile_db', JSON.stringify(db));
+            }, 100);
         }
 
         function initDropdown() {
@@ -305,6 +418,112 @@
             }
         }
 
+        // ฟังก์ชันอัปโหลดและย่อรูปภาพแบบเสถียร (รองรับการประมวลผลทีละรูปอย่างแม่นยำ)
+        function turboCompressAndAddImages(event) {
+            if (!selectedSpId) {
+                showToast("แจ้งเตือน", "กรุณาเลือกจุดจำหน่ายก่อนแนบรูปภาพ", true);
+                event.target.value = '';
+                return;
+            }
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            const sp = db.sellingPoints.find(s => s.id === selectedSpId);
+            if (!sp) {
+                event.target.value = '';
+                return;
+            }
+            if (!sp.images) sp.images = [];
+
+            showLoading("กำลังประมวลผลรูปภาพ", "กำลังย่อขนาดและแนบไฟล์หลักฐาน...");
+
+            let processed = 0;
+            const targetSize = 800;
+            const totalFiles = files.length;
+
+            for (let i = 0; i < totalFiles; i++) {
+                const file = files[i];
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            let width = img.width;
+                            let height = img.height;
+
+                            if (width > height) {
+                                if (width > targetSize) {
+                                    height = Math.round(height * (targetSize / width));
+                                    width = targetSize;
+                                }
+                            } else {
+                                if (height > targetSize) {
+                                    width = Math.round(width * (targetSize / height));
+                                    height = targetSize;
+                                }
+                            }
+
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+
+                            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65);
+                            sp.images.push(compressedDataUrl);
+                        } catch (err) {
+                            console.error("Image processing error:", err);
+                        }
+
+                        processed++;
+                        if (processed === totalFiles) {
+                            hideLoading();
+                            renderImagePreviews(sp);
+                            saveToLocalStorageSafe();
+                            showToast("สำเร็จ", "แนบรูปภาพเรียบร้อยแล้ว");
+                        }
+                    };
+                    img.onerror = function() {
+                        processed++;
+                        if (processed === totalFiles) {
+                            hideLoading();
+                            renderImagePreviews(sp);
+                            saveToLocalStorageSafe();
+                        }
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+            event.target.value = '';
+        }
+
+        function renderImagePreviews(sp) {
+            const container = document.getElementById('imagePreviewContainer');
+            if (!sp || !sp.images || sp.images.length === 0) {
+                container.innerHTML = '<p class="text-[10px] text-slate-500 italic">ยังไม่มีรูปภาพ</p>';
+                return;
+            }
+            container.innerHTML = sp.images.map((imgSrc, index) => `
+                <div class="relative w-14 h-14 border border-slate-700 rounded-lg overflow-hidden shadow-sm group">
+                    <img src="${imgSrc}" class="w-full h-full object-cover">
+                    <button type="button" onclick="removeSpImage(${index})" class="absolute top-0 right-0 bg-rose-600 text-white text-[9px] w-4 h-4 flex items-center justify-center font-bold">✕</button>
+                </div>
+            `).join('');
+        }
+
+        function removeSpImage(index) {
+            if (!selectedSpId) return;
+            const sp = db.sellingPoints.find(s => s.id === selectedSpId);
+            if (sp && sp.images) {
+                sp.images.splice(index, 1);
+                renderImagePreviews(sp);
+                saveToLocalStorageSafe();
+                showToast("สำเร็จ", "ลบรูปภาพเรียบร้อย");
+            }
+        }
+
         function onSelectSellingPoint() {
             const sel = document.getElementById('selectSellingPoint');
             selectedSpId = sel.value;
@@ -315,6 +534,7 @@
             if (!selectedSpId) {
                 container.innerHTML = '<p class="text-xs text-slate-500 text-center py-6">โปรดเลือกจุดจำหน่ายก่อน</p>';
                 badge.textContent = '-';
+                document.getElementById('imagePreviewContainer').innerHTML = '<p class="text-[10px] text-slate-500 italic">ยังไม่มีรูปภาพ</p>';
                 clearReportPreview();
                 return;
             }
@@ -324,13 +544,15 @@
             badge.className = sp.status === 'ดำเนินการแล้ว' ? 'font-bold text-emerald-400' : 'font-bold text-amber-400';
             btnToggle.textContent = sp.status === 'ดำเนินการแล้ว' ? 'เปลี่ยนเป็น "ยังไม่ดำเนินการ"' : 'เปลี่ยนเป็น "ดำเนินการแล้ว"';
 
+            renderImagePreviews(sp);
+
             let session = db.sessions.find(s => s.sellingPointId === selectedSpId || s.title === sp.name);
             if (!session) {
                 session = {
                     id: 'session_' + sp.id,
                     sellingPointId: sp.id,
                     title: sp.name,
-                    location: sp.name,
+                    location: sanitizeLocationName(sp.name),
                     date: sp.datetime ? sp.datetime.split('T')[0] : '',
                     salesQuantities: {},
                     expenses: JSON.parse(JSON.stringify(db.masterExpenses || []))
@@ -458,7 +680,6 @@
 
             document.getElementById('sumExpenseCell').innerText = totalExpense.toLocaleString('th-TH', {minimumFractionDigits:2, maximumFractionDigits:2});
 
-            // แก้ไขสูตรคำนวณสัดส่วนขวามือเป็น (รวมลดค่าครองชีพประชาชน / รวมมูลค่าตลาด) * 100 อย่างถูกต้อง 100%
             let ratio = sumMarket > 0 ? ((sumRelief / sumMarket) * 100).toFixed(8) : "0.00000000";
             document.getElementById('ratioDisplayCell').innerText = ratio;
         }
@@ -489,29 +710,56 @@
                 sp.status = 'ดำเนินการแล้ว';
             }
 
-            saveToLocalStorage();
+            saveToLocalStorageSafe();
             onSelectSellingPoint();
             initDropdown();
             document.getElementById('selectSellingPoint').value = selectedSpId;
             showToast("บันทึกสำเร็จ", "บันทึกจำนวนสินค้าลงในหน่วยความจำเรียบร้อย");
         }
 
-        function exportUpdatedJSON() {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const timestamp = `${year}-${month}-${day}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`;
-            const filename = `blue_flag_mobile_updated_${timestamp}.json`;
+        async function exportUpdatedZIP() {
+            showLoading("กำลังสร้างไฟล์ ZIP", "กำลังแพ็กข้อมูลและรูปภาพทั้งหมดตามมาตรฐานระบบ...");
 
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
-            const a = document.createElement('a');
-            a.href = dataStr;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            showToast("ดาวน์โหลดสำเร็จ", `บันทึกไฟล์ ${filename} เรียบร้อยแล้ว`);
+            setTimeout(async () => {
+                const zip = new JSZip();
+                let exportDb = JSON.parse(JSON.stringify(db));
+                let imgFolder = zip.folder("images");
+
+                exportDb.sellingPoints.forEach((sp) => {
+                    if (sp.images && sp.images.length > 0) {
+                        let safeSpName = sp.name.replace(/[/\\?%*:|"<>]/g, '_');
+                        let spFolder = imgFolder.folder(`selling_point_${sp.id}_${safeSpName}`);
+                        sp.images.forEach((imgBase64, imgIdx) => {
+                            if (imgBase64.startsWith('data:image')) {
+                                let matches = imgBase64.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
+                                if (matches && matches.length === 3) {
+                                    let ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+                                    let base64Data = matches[2];
+                                    spFolder.file(`image_${imgIdx + 1}.${ext}`, base64Data, {base64: true});
+                                }
+                            }
+                        });
+                    }
+                });
+
+                zip.file("data.json", JSON.stringify(exportDb, null, 2));
+
+                const content = await zip.generateAsync({type: "blob"});
+                
+                const now = new Date();
+                const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}-${String(now.getSeconds()).padStart(2,'0')}`;
+                // ใช้รูปแบบการตั้งชื่อไฟล์ที่กำกับด้วยวันที่และเวลาเสมอตามมาตรฐานระบบสำรองข้อมูล
+                const filename = `blue_flag_mobile_updated_${timestamp}.zip`;
+
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(content);
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(a.href);
+
+                hideLoading();
+                showToast("สำรองข้อมูลสำเร็จ", `บันทึกไฟล์ ${filename} เรียบร้อยแล้ว`);
+            }, 100);
         }
     </script>
 </body>
