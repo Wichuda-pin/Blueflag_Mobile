@@ -49,7 +49,7 @@
                 <i class="fa-solid fa-spinner fa-spin text-2xl"></i>
             </div>
             <div class="font-bold text-white text-sm" id="loadingTitle">กำลังประมวลผล...</div>
-            <div class="text-xs text-slate-400" id="loadingMessage">กรุณารอสักครู่ ระบบกำลังอ่านไฟล์ ZIP</div>
+            <div class="text-xs text-slate-400" id="loadingMessage">กรุณารอสักครู่ ระบบกำลังจัดการข้อมูล</div>
         </div>
     </div>
 
@@ -96,7 +96,7 @@
                 <span class="text-[10px] text-slate-400" id="productCountLabel">0 รายการ</span>
             </div>
             
-            <!-- ส่วนเพิ่มรูปภาพแบบ Turbo Compression (แก้ไขให้สะสมรูปเก่าและใหม่รวมกันได้อย่างถูกต้อง 100%) -->
+            <!-- ส่วนเพิ่มรูปภาพ (ใช้ระบบ IndexedDB - รูปไม่หาย 100%) -->
             <div class="space-y-2 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
                 <div class="flex justify-between items-center">
                     <label class="text-[11px] font-semibold text-blue-300"><i class="fa-solid fa-camera mr-1"></i> รูปภาพหลักฐานประจำจุดจำหน่าย</label>
@@ -217,7 +217,7 @@
 
     <!-- Footer Mobile Info -->
     <footer class="fixed bottom-0 left-0 right-0 glass-panel border-t border-slate-700/60 p-3 text-center text-[10px] text-slate-400 z-30">
-        ระบบบันทึกภาคสนามโครงการธงฟ้า (Mobile Collector V.7 - Multi-Image Safe)
+        ระบบบันทึกภาคสนามโครงการธงฟ้า (Mobile Collector V.8 - IndexedDB Ultimate Safe)
     </footer>
 
     <!-- Script Logic -->
@@ -249,13 +249,60 @@
         let selectedSpId = "";
         let loadedFileName = "ยังไม่ได้โหลดไฟล์ ZIP";
 
+        // ---- ระบบจัดการคลังข้อมูลขนาดใหญ่ด้วย IndexedDB ----
+        function openIDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('BlueFlagMobileDB', 1);
+                request.onupgradeneeded = (e) => {
+                    const idb = e.target.result;
+                    if (!idb.objectStoreNames.contains('app_state')) {
+                        idb.createObjectStore('app_state');
+                    }
+                };
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function saveToIndexedDB() {
+            try {
+                const idb = await openIDB();
+                const tx = idb.transaction('app_state', 'readwrite');
+                tx.objectStore('app_state').put(db, 'main_db');
+            } catch (err) {
+                console.error("IndexedDB Save Error:", err);
+            }
+        }
+
+        async function loadFromIndexedDB() {
+            try {
+                const idb = await openIDB();
+                const tx = idb.transaction('app_state', 'readonly');
+                const req = tx.objectStore('app_state').get('main_db');
+                return new Promise((resolve) => {
+                    req.onsuccess = () => resolve(req.result || null);
+                    req.onerror = () => resolve(null);
+                });
+            } catch (err) {
+                return null;
+            }
+        }
+
         function sanitizeLocationName(str) {
             if (!str) return 'จุดจำหน่าย';
             return str.replace(/^ธงฟ้า\s*ณ\s*/i, '').replace(/^ณ\s*/i, '').trim();
         }
 
-        window.onload = function() {
-            loadFromLocalStorage();
+        window.onload = async function() {
+            const savedData = await loadFromIndexedDB();
+            if (savedData) {
+                db = savedData;
+            } else {
+                const legacyLocalStorage = localStorage.getItem('blue_flag_mobile_db');
+                if (legacyLocalStorage) {
+                    try { db = JSON.parse(legacyLocalStorage); } catch(e) {}
+                }
+            }
             initDropdown();
         };
 
@@ -276,27 +323,6 @@
 
         function hideLoading() {
             document.getElementById('loadingModal').classList.add('hidden');
-        }
-
-        function saveToLocalStorageSafe() {
-            try {
-                localStorage.setItem('blue_flag_mobile_db', JSON.stringify(db));
-            } catch (e) {
-                try {
-                    let lightDb = JSON.parse(JSON.stringify(db));
-                    lightDb.sellingPoints.forEach(sp => sp.images = []);
-                    localStorage.setItem('blue_flag_mobile_db', JSON.stringify(lightDb));
-                } catch (err) {}
-            }
-        }
-
-        function loadFromLocalStorage() {
-            const saved = localStorage.getItem('blue_flag_mobile_db');
-            if (saved) {
-                try {
-                    db = JSON.parse(saved);
-                } catch(e) {}
-            }
         }
 
         async function loadBackupFile(event) {
@@ -372,7 +398,7 @@
                             }
                         });
 
-                        saveToLocalStorageSafe();
+                        await saveToIndexedDB();
                         initDropdown();
                         hideLoading();
                         showToast("สำเร็จ", `ดึงข้อมูลจาก ZIP ${file.name} เรียบร้อยแล้ว`);
@@ -382,7 +408,7 @@
                     }
                 } else {
                     const reader = new FileReader();
-                    reader.onload = function(evt) {
+                    reader.onload = async function(evt) {
                         try {
                             const imported = JSON.parse(evt.target.result);
                             db.sellingPoints = imported.sellingPoints || [];
@@ -390,7 +416,7 @@
                             db.masterProducts = imported.masterProducts || db.masterProducts;
                             db.masterExpenses = imported.masterExpenses || db.masterExpenses;
                             db.sessions = imported.sessions || [];
-                            saveToLocalStorageSafe();
+                            await saveToIndexedDB();
                             initDropdown();
                             hideLoading();
                             showToast("สำเร็จ", `ดึงข้อมูลจาก JSON ${file.name} เรียบร้อยแล้ว`);
@@ -418,7 +444,7 @@
             }
         }
 
-        // ฟังก์ชันอัปโหลดและย่อรูปภาพแบบสะสมข้อมูล (คงรูปเก่าไว้ครบถ้วนและเพิ่มรูปใหม่ต่อท้าย)
+        // ฟังก์ชันอัปโหลดและย่อรูปภาพความเร็วสูง พร้อมเก็บลง IndexedDB แบบถาวร
         function turboCompressAndAddImages(event) {
             if (!selectedSpId) {
                 showToast("แจ้งเตือน", "กรุณาเลือกจุดจำหน่ายก่อนแนบรูปภาพ", true);
@@ -435,7 +461,7 @@
             }
             if (!sp.images) sp.images = [];
 
-            showLoading("กำลังประมวลผลรูปภาพ", "กำลังย่อขนาดและรวมไฟล์หลักฐานใหม่...");
+            showLoading("กำลังประมวลผลรูปภาพ", "กำลังย่อขนาดและบันทึกรูปภาพถาวร...");
 
             let processed = 0;
             const targetSize = 800;
@@ -447,7 +473,7 @@
                 
                 reader.onload = function(e) {
                     const img = new Image();
-                    img.onload = function() {
+                    img.onload = async function() {
                         try {
                             const canvas = document.createElement('canvas');
                             let width = img.width;
@@ -471,7 +497,6 @@
                             ctx.drawImage(img, 0, 0, width, height);
 
                             const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65);
-                            // เพิ่มรูปใหม่ต่อท้ายอาร์เรย์รูปเดิมที่มีอยู่โดยไม่ลบของเก่า
                             sp.images.push(compressedDataUrl);
                         } catch (err) {
                             console.error("Image processing error:", err);
@@ -479,18 +504,18 @@
 
                         processed++;
                         if (processed === totalFiles) {
+                            await saveToIndexedDB();
                             hideLoading();
                             renderImagePreviews(sp);
-                            saveToLocalStorageSafe();
-                            showToast("สำเร็จ", "เพิ่มรูปภาพใหม่รวมกับรูปเดิมเรียบร้อยแล้ว");
+                            showToast("สำเร็จ", "แนบรูปภาพใหม่สะสมกับรูปเดิมเรียบร้อยแล้ว");
                         }
                     };
-                    img.onerror = function() {
+                    img.onerror = async function() {
                         processed++;
                         if (processed === totalFiles) {
+                            await saveToIndexedDB();
                             hideLoading();
                             renderImagePreviews(sp);
-                            saveToLocalStorageSafe();
                         }
                     };
                     img.src = e.target.result;
@@ -514,13 +539,13 @@
             `).join('');
         }
 
-        function removeSpImage(index) {
+        async function removeSpImage(index) {
             if (!selectedSpId) return;
             const sp = db.sellingPoints.find(s => s.id === selectedSpId);
             if (sp && sp.images) {
                 sp.images.splice(index, 1);
                 renderImagePreviews(sp);
-                saveToLocalStorageSafe();
+                await saveToIndexedDB();
                 showToast("สำเร็จ", "ลบรูปภาพเรียบร้อย");
             }
         }
@@ -591,11 +616,12 @@
             }
         }
 
-        function toggleSpStatus() {
+        async function toggleSpStatus() {
             if (!selectedSpId) return;
             const sp = db.sellingPoints.find(s => s.id === selectedSpId);
             if (sp) {
                 sp.status = sp.status === 'ดำเนินการแล้ว' ? 'ยังไม่ดำเนินการ' : 'ดำเนินการแล้ว';
+                await saveToIndexedDB();
                 onSelectSellingPoint();
                 initDropdown();
                 document.getElementById('selectSellingPoint').value = selectedSpId;
@@ -700,7 +726,7 @@
             document.getElementById('ratioDisplayCell').innerText = '0.00000000';
         }
 
-        function saveCurrentSessionData() {
+        async function saveCurrentSessionData() {
             if (!selectedSpId) {
                 showToast("แจ้งเตือน", "กรุณาเลือกจุดจำหน่ายก่อนบันทึก", true);
                 return;
@@ -711,11 +737,11 @@
                 sp.status = 'ดำเนินการแล้ว';
             }
 
-            saveToLocalStorageSafe();
+            await saveToIndexedDB();
             onSelectSellingPoint();
             initDropdown();
             document.getElementById('selectSellingPoint').value = selectedSpId;
-            showToast("บันทึกสำเร็จ", "บันทึกจำนวนสินค้าลงในหน่วยความจำเรียบร้อย");
+            showToast("บันทึกสำเร็จ", "บันทึกข้อมูลและรูปภาพลงในระบบเรียบร้อย");
         }
 
         async function exportUpdatedZIP() {
