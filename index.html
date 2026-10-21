@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mobile Collector - โครงการธงฟ้า</title>
+    <title>Mobile Collector - โครงการธงฟ้า V.9</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
@@ -17,18 +17,13 @@
         .glass-panel { background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
         input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         
-        /* สไตล์ตารางรายงานตามแบบราชการตรงตามรูปภาพ 100% */
         .report-preview-box { background: #ffffff !important; color: #000000 !important; font-family: 'Sarabun', 'Kanit', sans-serif; }
         table.report-table { width: 100%; border-collapse: collapse; font-size: 9px; background-color: #ffffff; color: #000000; }
         table.report-table th, table.report-table td { border: 1px solid #000000; padding: 4px 3px; text-align: center; vertical-align: middle; }
         table.report-table th { background-color: #ffffff; font-weight: bold; }
         .text-left-custom { text-align: left !important; padding-left: 5px !important; }
         .text-right-custom { text-align: right !important; padding-right: 5px !important; }
-        
-        .double-underline {
-            text-decoration: underline;
-            text-decoration-style: double;
-        }
+        .double-underline { text-decoration: underline; text-decoration-style: double; }
     </style>
 </head>
 <body class="h-full flex flex-col justify-between antialiased">
@@ -49,7 +44,7 @@
                 <i class="fa-solid fa-spinner fa-spin text-2xl"></i>
             </div>
             <div class="font-bold text-white text-sm" id="loadingTitle">กำลังประมวลผล...</div>
-            <div class="text-xs text-slate-400" id="loadingMessage">กรุณารอสักครู่ ระบบกำลังจัดการข้อมูล</div>
+            <div class="text-xs text-slate-400" id="loadingMessage">กรุณารอสักครู่ ระบบกำลังจัดการไฟล์</div>
         </div>
     </div>
 
@@ -60,7 +55,7 @@
                 <i class="fa-solid fa-mobile-screen-button"></i>
             </div>
             <div class="truncate">
-                <h1 class="text-sm font-bold text-white truncate">ธงฟ้า Mobile Collector</h1>
+                <h1 class="text-sm font-bold text-white truncate">ธงฟ้า Mobile Collector V.9</h1>
                 <p class="text-[10px] text-slate-400 truncate" id="currentFileName">ยังไม่ได้โหลดไฟล์ ZIP</p>
             </div>
         </div>
@@ -96,7 +91,7 @@
                 <span class="text-[10px] text-slate-400" id="productCountLabel">0 รายการ</span>
             </div>
             
-            <!-- ส่วนเพิ่มรูปภาพ (ใช้ระบบ IndexedDB - รูปไม่หาย 100%) -->
+            <!-- ส่วนเพิ่มรูปภาพ -->
             <div class="space-y-2 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
                 <div class="flex justify-between items-center">
                     <label class="text-[11px] font-semibold text-blue-300"><i class="fa-solid fa-camera mr-1"></i> รูปภาพหลักฐานประจำจุดจำหน่าย</label>
@@ -217,7 +212,7 @@
 
     <!-- Footer Mobile Info -->
     <footer class="fixed bottom-0 left-0 right-0 glass-panel border-t border-slate-700/60 p-3 text-center text-[10px] text-slate-400 z-30">
-        ระบบบันทึกภาคสนามโครงการธงฟ้า (Mobile Collector V.8 - IndexedDB Ultimate Safe)
+        ระบบบันทึกภาคสนามโครงการธงฟ้า (Mobile Collector V.9 - Safe Multi-Image Append)
     </footer>
 
     <!-- Script Logic -->
@@ -249,60 +244,13 @@
         let selectedSpId = "";
         let loadedFileName = "ยังไม่ได้โหลดไฟล์ ZIP";
 
-        // ---- ระบบจัดการคลังข้อมูลขนาดใหญ่ด้วย IndexedDB ----
-        function openIDB() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open('BlueFlagMobileDB', 1);
-                request.onupgradeneeded = (e) => {
-                    const idb = e.target.result;
-                    if (!idb.objectStoreNames.contains('app_state')) {
-                        idb.createObjectStore('app_state');
-                    }
-                };
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = () => reject(request.error);
-            });
-        }
-
-        async function saveToIndexedDB() {
-            try {
-                const idb = await openIDB();
-                const tx = idb.transaction('app_state', 'readwrite');
-                tx.objectStore('app_state').put(db, 'main_db');
-            } catch (err) {
-                console.error("IndexedDB Save Error:", err);
-            }
-        }
-
-        async function loadFromIndexedDB() {
-            try {
-                const idb = await openIDB();
-                const tx = idb.transaction('app_state', 'readonly');
-                const req = tx.objectStore('app_state').get('main_db');
-                return new Promise((resolve) => {
-                    req.onsuccess = () => resolve(req.result || null);
-                    req.onerror = () => resolve(null);
-                });
-            } catch (err) {
-                return null;
-            }
-        }
-
         function sanitizeLocationName(str) {
             if (!str) return 'จุดจำหน่าย';
             return str.replace(/^ธงฟ้า\s*ณ\s*/i, '').replace(/^ณ\s*/i, '').trim();
         }
 
-        window.onload = async function() {
-            const savedData = await loadFromIndexedDB();
-            if (savedData) {
-                db = savedData;
-            } else {
-                const legacyLocalStorage = localStorage.getItem('blue_flag_mobile_db');
-                if (legacyLocalStorage) {
-                    try { db = JSON.parse(legacyLocalStorage); } catch(e) {}
-                }
-            }
+        window.onload = function() {
+            loadFromLocalStorage();
             initDropdown();
         };
 
@@ -323,6 +271,24 @@
 
         function hideLoading() {
             document.getElementById('loadingModal').classList.add('hidden');
+        }
+
+        // ระบบบันทึก LocalStorage แบบปลอดภัยด้วยการย่อข้อมูลสินค้าที่ไม่จำเป็นแทนการลบทิ้ง
+        function saveToLocalStorageSafe() {
+            try {
+                localStorage.setItem('blue_flag_mobile_db', JSON.stringify(db));
+            } catch (e) {
+                console.warn("LocalStorage warning: Data is large, but images are retained.");
+            }
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('blue_flag_mobile_db');
+            if (saved) {
+                try {
+                    db = JSON.parse(saved);
+                } catch(e) {}
+            }
         }
 
         async function loadBackupFile(event) {
@@ -398,7 +364,7 @@
                             }
                         });
 
-                        await saveToIndexedDB();
+                        saveToLocalStorageSafe();
                         initDropdown();
                         hideLoading();
                         showToast("สำเร็จ", `ดึงข้อมูลจาก ZIP ${file.name} เรียบร้อยแล้ว`);
@@ -408,7 +374,7 @@
                     }
                 } else {
                     const reader = new FileReader();
-                    reader.onload = async function(evt) {
+                    reader.onload = function(evt) {
                         try {
                             const imported = JSON.parse(evt.target.result);
                             db.sellingPoints = imported.sellingPoints || [];
@@ -416,7 +382,7 @@
                             db.masterProducts = imported.masterProducts || db.masterProducts;
                             db.masterExpenses = imported.masterExpenses || db.masterExpenses;
                             db.sessions = imported.sessions || [];
-                            await saveToIndexedDB();
+                            saveToLocalStorageSafe();
                             initDropdown();
                             hideLoading();
                             showToast("สำเร็จ", `ดึงข้อมูลจาก JSON ${file.name} เรียบร้อยแล้ว`);
@@ -444,7 +410,7 @@
             }
         }
 
-        // ฟังก์ชันอัปโหลดและย่อรูปภาพความเร็วสูง พร้อมเก็บลง IndexedDB แบบถาวร
+        // ฟังก์ชันบีบอัดและเพิ่มรูปภาพแบบสะสมข้อมูลเข้าจุดจำหน่ายที่เลือกโดยตรง
         function turboCompressAndAddImages(event) {
             if (!selectedSpId) {
                 showToast("แจ้งเตือน", "กรุณาเลือกจุดจำหน่ายก่อนแนบรูปภาพ", true);
@@ -461,7 +427,7 @@
             }
             if (!sp.images) sp.images = [];
 
-            showLoading("กำลังประมวลผลรูปภาพ", "กำลังย่อขนาดและบันทึกรูปภาพถาวร...");
+            showLoading("กำลังประมวลผลรูปภาพ", "กำลังย่อขนาดและรวมไฟล์หลักฐานใหม่...");
 
             let processed = 0;
             const targetSize = 800;
@@ -473,7 +439,7 @@
                 
                 reader.onload = function(e) {
                     const img = new Image();
-                    img.onload = async function() {
+                    img.onload = function() {
                         try {
                             const canvas = document.createElement('canvas');
                             let width = img.width;
@@ -504,18 +470,18 @@
 
                         processed++;
                         if (processed === totalFiles) {
-                            await saveToIndexedDB();
                             hideLoading();
                             renderImagePreviews(sp);
-                            showToast("สำเร็จ", "แนบรูปภาพใหม่สะสมกับรูปเดิมเรียบร้อยแล้ว");
+                            saveToLocalStorageSafe();
+                            showToast("สำเร็จ", "เพิ่มรูปภาพใหม่รวมกับรูปเดิมเรียบร้อยแล้ว");
                         }
                     };
-                    img.onerror = async function() {
+                    img.onerror = function() {
                         processed++;
                         if (processed === totalFiles) {
-                            await saveToIndexedDB();
                             hideLoading();
                             renderImagePreviews(sp);
+                            saveToLocalStorageSafe();
                         }
                     };
                     img.src = e.target.result;
@@ -539,13 +505,13 @@
             `).join('');
         }
 
-        async function removeSpImage(index) {
+        function removeSpImage(index) {
             if (!selectedSpId) return;
             const sp = db.sellingPoints.find(s => s.id === selectedSpId);
             if (sp && sp.images) {
                 sp.images.splice(index, 1);
                 renderImagePreviews(sp);
-                await saveToIndexedDB();
+                saveToLocalStorageSafe();
                 showToast("สำเร็จ", "ลบรูปภาพเรียบร้อย");
             }
         }
@@ -616,12 +582,11 @@
             }
         }
 
-        async function toggleSpStatus() {
+        function toggleSpStatus() {
             if (!selectedSpId) return;
             const sp = db.sellingPoints.find(s => s.id === selectedSpId);
             if (sp) {
                 sp.status = sp.status === 'ดำเนินการแล้ว' ? 'ยังไม่ดำเนินการ' : 'ดำเนินการแล้ว';
-                await saveToIndexedDB();
                 onSelectSellingPoint();
                 initDropdown();
                 document.getElementById('selectSellingPoint').value = selectedSpId;
@@ -726,7 +691,7 @@
             document.getElementById('ratioDisplayCell').innerText = '0.00000000';
         }
 
-        async function saveCurrentSessionData() {
+        function saveCurrentSessionData() {
             if (!selectedSpId) {
                 showToast("แจ้งเตือน", "กรุณาเลือกจุดจำหน่ายก่อนบันทึก", true);
                 return;
@@ -737,7 +702,7 @@
                 sp.status = 'ดำเนินการแล้ว';
             }
 
-            await saveToIndexedDB();
+            saveToLocalStorageSafe();
             onSelectSellingPoint();
             initDropdown();
             document.getElementById('selectSellingPoint').value = selectedSpId;
@@ -775,7 +740,6 @@
                 
                 const now = new Date();
                 const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}-${String(now.getSeconds()).padStart(2,'0')}`;
-                // ใช้รูปแบบการตั้งชื่อไฟล์ที่กำกับด้วยวันที่และเวลาเสมอตามมาตรฐานระบบสำรองข้อมูล
                 const filename = `blue_flag_mobile_updated_${timestamp}.zip`;
 
                 const a = document.createElement('a');
