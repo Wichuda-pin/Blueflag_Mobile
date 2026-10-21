@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mobile Collector - โครงการธงฟ้า V.9</title>
+    <title>Mobile Collector - โครงการธงฟ้า (ปิดฟังก์ชันรูปภาพ)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
@@ -55,7 +55,7 @@
                 <i class="fa-solid fa-mobile-screen-button"></i>
             </div>
             <div class="truncate">
-                <h1 class="text-sm font-bold text-white truncate">ธงฟ้า Mobile Collector V.9</h1>
+                <h1 class="text-sm font-bold text-white truncate">ธงฟ้า Mobile Collector</h1>
                 <p class="text-[10px] text-slate-400 truncate" id="currentFileName">ยังไม่ได้โหลดไฟล์ ZIP</p>
             </div>
         </div>
@@ -84,25 +84,11 @@
             </div>
         </div>
 
-        <!-- Step 2: Record Sales Quantities & Images -->
+        <!-- Step 2: Record Sales Quantities -->
         <div class="glass-panel p-4 rounded-2xl space-y-4 shadow-xl">
             <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
-                <h3 class="text-xs font-bold text-white uppercase tracking-wider"><i class="fa-solid fa-boxes-stacked mr-1 text-sky-400"></i> 2. บันทึกจำนวนสินค้า & รูปภาพ</h3>
+                <h3 class="text-xs font-bold text-white uppercase tracking-wider"><i class="fa-solid fa-boxes-stacked mr-1 text-sky-400"></i> 2. บันทึกจำนวนสินค้า</h3>
                 <span class="text-[10px] text-slate-400" id="productCountLabel">0 รายการ</span>
-            </div>
-            
-            <!-- ส่วนเพิ่มรูปภาพ -->
-            <div class="space-y-2 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
-                <div class="flex justify-between items-center">
-                    <label class="text-[11px] font-semibold text-blue-300"><i class="fa-solid fa-camera mr-1"></i> รูปภาพหลักฐานประจำจุดจำหน่าย</label>
-                    <button type="button" onclick="document.getElementById('spImagesInput').click()" class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg transition active:scale-95 shadow">
-                        <i class="fa-solid fa-plus mr-1"></i> เพิ่มรูปภาพ
-                    </button>
-                    <input type="file" id="spImagesInput" multiple accept="image/*" class="hidden" onchange="turboCompressAndAddImages(event)">
-                </div>
-                <div id="imagePreviewContainer" class="flex flex-wrap gap-2 pt-1">
-                    <p class="text-[10px] text-slate-500 italic">ยังไม่มีรูปภาพ</p>
-                </div>
             </div>
 
             <div id="productInputsContainer" class="space-y-2.5 max-h-60 overflow-y-auto pr-1">
@@ -197,14 +183,14 @@
             </div>
         </div>
 
-        <!-- Step 4: Export Updated ZIP File -->
+        <!-- Step 4: Export Updated JSON File -->
         <div class="glass-panel p-4 rounded-2xl space-y-2.5 shadow-xl border-blue-500/30">
             <h3 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                <i class="fa-solid fa-file-zipper text-blue-400"></i> 4. ส่งออกไฟล์ ZIP กลับเข้าระบบใหญ่
+                <i class="fa-solid fa-file-arrow-down text-blue-400"></i> 4. ส่งออกไฟล์ข้อมูลกลับเข้าระบบใหญ่
             </h3>
-            <p class="text-[11px] text-slate-400 leading-relaxed">สำรองข้อมูล ZIP (บรรจุ data.json และโฟลเดอร์รูป) เพื่อนำกลับไปเปิดต่อในระบบคอมพิวเตอร์หลัก</p>
-            <button onclick="exportUpdatedZIP()" class="w-full bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold py-3 rounded-xl text-xs shadow-lg shadow-blue-600/30 transition flex items-center justify-center space-x-2">
-                <i class="fa-solid fa-download"></i><span>สำรองข้อมูล ZIP (พร้อมโฟลเดอร์รูป)</span>
+            <p class="text-[11px] text-slate-400 leading-relaxed">สำรองข้อมูลสรุปผลการบันทึกเพื่อนำกลับไปเปิดต่อในระบบคอมพิวเตอร์หลัก</p>
+            <button onclick="exportUpdatedJSON()" class="w-full bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold py-3 rounded-xl text-xs shadow-lg shadow-blue-600/30 transition flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-download"></i><span>สำรองข้อมูล JSON</span>
             </button>
         </div>
 
@@ -212,7 +198,7 @@
 
     <!-- Footer Mobile Info -->
     <footer class="fixed bottom-0 left-0 right-0 glass-panel border-t border-slate-700/60 p-3 text-center text-[10px] text-slate-400 z-30">
-        ระบบบันทึกภาคสนามโครงการธงฟ้า (Mobile Collector V.9 - Safe Multi-Image Append)
+        ระบบบันทึกภาคสนามโครงการธงฟ้า (Text-Only Mode)
     </footer>
 
     <!-- Script Logic -->
@@ -242,7 +228,7 @@
         };
 
         let selectedSpId = "";
-        let loadedFileName = "ยังไม่ได้โหลดไฟล์ ZIP";
+        let loadedFileName = "ยังไม่ได้โหลดไฟล์";
 
         function sanitizeLocationName(str) {
             if (!str) return 'จุดจำหน่าย';
@@ -273,13 +259,10 @@
             document.getElementById('loadingModal').classList.add('hidden');
         }
 
-        // ระบบบันทึก LocalStorage แบบปลอดภัยด้วยการย่อข้อมูลสินค้าที่ไม่จำเป็นแทนการลบทิ้ง
         function saveToLocalStorageSafe() {
             try {
                 localStorage.setItem('blue_flag_mobile_db', JSON.stringify(db));
-            } catch (e) {
-                console.warn("LocalStorage warning: Data is large, but images are retained.");
-            }
+            } catch (e) {}
         }
 
         function loadFromLocalStorage() {
@@ -326,26 +309,6 @@
                         db.masterExpenses = imported.masterExpenses || db.masterExpenses;
                         db.sessions = imported.sessions || [];
 
-                        for (let sp of db.sellingPoints) {
-                            if (!sp.images) sp.images = [];
-                            let folderPrefix = `images/selling_point_${sp.id}`;
-                            let imageFiles = Object.keys(zipContent.files).filter(filename => filename.startsWith(folderPrefix) && !zipContent.files[filename].dir);
-                            
-                            if (imageFiles.length > 0) {
-                                sp.images = [];
-                                for (let imgPath of imageFiles) {
-                                    let imgFile = zipContent.file(imgPath);
-                                    let imgBlob = await imgFile.async("blob");
-                                    let base64Img = await new Promise((resolve) => {
-                                        let reader = new FileReader();
-                                        reader.onload = (evt) => resolve(evt.target.result);
-                                        reader.readAsDataURL(imgBlob);
-                                    });
-                                    sp.images.push(base64Img);
-                                }
-                            }
-                        }
-
                         db.sessions.forEach(s => {
                             if (s.location) s.location = sanitizeLocationName(s.location);
                         });
@@ -367,10 +330,10 @@
                         saveToLocalStorageSafe();
                         initDropdown();
                         hideLoading();
-                        showToast("สำเร็จ", `ดึงข้อมูลจาก ZIP ${file.name} เรียบร้อยแล้ว`);
+                        showToast("สำเร็จ", `ดึงข้อมูลเรียบร้อยแล้ว`);
                     } catch(err) {
                         hideLoading();
-                        showToast("เกิดข้อผิดพลาด", "ไม่สามารถอ่านไฟล์ ZIP ได้: " + err.message, true);
+                        showToast("เกิดข้อผิดพลาด", "ไม่สามารถอ่านไฟล์ได้: " + err.message, true);
                     }
                 } else {
                     const reader = new FileReader();
@@ -385,10 +348,10 @@
                             saveToLocalStorageSafe();
                             initDropdown();
                             hideLoading();
-                            showToast("สำเร็จ", `ดึงข้อมูลจาก JSON ${file.name} เรียบร้อยแล้ว`);
+                            showToast("สำเร็จ", `ดึงข้อมูลเรียบร้อยแล้ว`);
                         } catch(err) {
                             hideLoading();
-                            showToast("เกิดข้อผิดพลาด", "รูปแบบไฟล์ JSON ไม่ถูกต้อง", true);
+                            showToast("เกิดข้อผิดพลาด", "รูปแบบไฟล์ไม่ถูกต้อง", true);
                         }
                     };
                     reader.readAsText(file);
@@ -410,112 +373,6 @@
             }
         }
 
-        // ฟังก์ชันบีบอัดและเพิ่มรูปภาพแบบสะสมข้อมูลเข้าจุดจำหน่ายที่เลือกโดยตรง
-        function turboCompressAndAddImages(event) {
-            if (!selectedSpId) {
-                showToast("แจ้งเตือน", "กรุณาเลือกจุดจำหน่ายก่อนแนบรูปภาพ", true);
-                event.target.value = '';
-                return;
-            }
-            const files = event.target.files;
-            if (!files || files.length === 0) return;
-
-            const sp = db.sellingPoints.find(s => s.id === selectedSpId);
-            if (!sp) {
-                event.target.value = '';
-                return;
-            }
-            if (!sp.images) sp.images = [];
-
-            showLoading("กำลังประมวลผลรูปภาพ", "กำลังย่อขนาดและรวมไฟล์หลักฐานใหม่...");
-
-            let processed = 0;
-            const targetSize = 800;
-            const totalFiles = files.length;
-
-            for (let i = 0; i < totalFiles; i++) {
-                const file = files[i];
-                const reader = new FileReader();
-                
-                reader.onload = function(e) {
-                    const img = new Image();
-                    img.onload = function() {
-                        try {
-                            const canvas = document.createElement('canvas');
-                            let width = img.width;
-                            let height = img.height;
-
-                            if (width > height) {
-                                if (width > targetSize) {
-                                    height = Math.round(height * (targetSize / width));
-                                    width = targetSize;
-                                }
-                            } else {
-                                if (height > targetSize) {
-                                    width = Math.round(width * (targetSize / height));
-                                    height = targetSize;
-                                }
-                            }
-
-                            canvas.width = width;
-                            canvas.height = height;
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(img, 0, 0, width, height);
-
-                            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65);
-                            sp.images.push(compressedDataUrl);
-                        } catch (err) {
-                            console.error("Image processing error:", err);
-                        }
-
-                        processed++;
-                        if (processed === totalFiles) {
-                            hideLoading();
-                            renderImagePreviews(sp);
-                            saveToLocalStorageSafe();
-                            showToast("สำเร็จ", "เพิ่มรูปภาพใหม่รวมกับรูปเดิมเรียบร้อยแล้ว");
-                        }
-                    };
-                    img.onerror = function() {
-                        processed++;
-                        if (processed === totalFiles) {
-                            hideLoading();
-                            renderImagePreviews(sp);
-                            saveToLocalStorageSafe();
-                        }
-                    };
-                    img.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-            event.target.value = '';
-        }
-
-        function renderImagePreviews(sp) {
-            const container = document.getElementById('imagePreviewContainer');
-            if (!sp || !sp.images || sp.images.length === 0) {
-                container.innerHTML = '<p class="text-[10px] text-slate-500 italic">ยังไม่มีรูปภาพ</p>';
-                return;
-            }
-            container.innerHTML = sp.images.map((imgSrc, index) => `
-                <div class="relative w-14 h-14 border border-slate-700 rounded-lg overflow-hidden shadow-sm group">
-                    <img src="${imgSrc}" class="w-full h-full object-cover">
-                    <button type="button" onclick="removeSpImage(${index})" class="absolute top-0 right-0 bg-rose-600 text-white text-[9px] w-4 h-4 flex items-center justify-center font-bold">✕</button>
-                </div>
-            `).join('');
-        }
-
-        function removeSpImage(index) {
-            if (!selectedSpId) return;
-            const sp = db.sellingPoints.find(s => s.id === selectedSpId);
-            if (sp && sp.images) {
-                sp.images.splice(index, 1);
-                renderImagePreviews(sp);
-                saveToLocalStorageSafe();
-                showToast("สำเร็จ", "ลบรูปภาพเรียบร้อย");
-            }
-        }
-
         function onSelectSellingPoint() {
             const sel = document.getElementById('selectSellingPoint');
             selectedSpId = sel.value;
@@ -526,7 +383,6 @@
             if (!selectedSpId) {
                 container.innerHTML = '<p class="text-xs text-slate-500 text-center py-6">โปรดเลือกจุดจำหน่ายก่อน</p>';
                 badge.textContent = '-';
-                document.getElementById('imagePreviewContainer').innerHTML = '<p class="text-[10px] text-slate-500 italic">ยังไม่มีรูปภาพ</p>';
                 clearReportPreview();
                 return;
             }
@@ -535,8 +391,6 @@
             badge.textContent = sp.status || 'ยังไม่ดำเนินการ';
             badge.className = sp.status === 'ดำเนินการแล้ว' ? 'font-bold text-emerald-400' : 'font-bold text-amber-400';
             btnToggle.textContent = sp.status === 'ดำเนินการแล้ว' ? 'เปลี่ยนเป็น "ยังไม่ดำเนินการ"' : 'เปลี่ยนเป็น "ดำเนินการแล้ว"';
-
-            renderImagePreviews(sp);
 
             let session = db.sessions.find(s => s.sellingPointId === selectedSpId || s.title === sp.name);
             if (!session) {
@@ -706,50 +560,27 @@
             onSelectSellingPoint();
             initDropdown();
             document.getElementById('selectSellingPoint').value = selectedSpId;
-            showToast("บันทึกสำเร็จ", "บันทึกข้อมูลและรูปภาพลงในระบบเรียบร้อย");
+            showToast("บันทึกสำเร็จ", "บันทึกจำนวนสินค้าลงในระบบเรียบร้อย");
         }
 
-        async function exportUpdatedZIP() {
-            showLoading("กำลังสร้างไฟล์ ZIP", "กำลังแพ็กข้อมูลและรูปภาพทั้งหมดตามมาตรฐานระบบ...");
+        function exportUpdatedJSON() {
+            showLoading("กำลังสร้างไฟล์", "กำลังเตรียมไฟล์ข้อมูล...");
 
-            setTimeout(async () => {
-                const zip = new JSZip();
-                let exportDb = JSON.parse(JSON.stringify(db));
-                let imgFolder = zip.folder("images");
-
-                exportDb.sellingPoints.forEach((sp) => {
-                    if (sp.images && sp.images.length > 0) {
-                        let safeSpName = sp.name.replace(/[/\\?%*:|"<>]/g, '_');
-                        let spFolder = imgFolder.folder(`selling_point_${sp.id}_${safeSpName}`);
-                        sp.images.forEach((imgBase64, imgIdx) => {
-                            if (imgBase64.startsWith('data:image')) {
-                                let matches = imgBase64.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
-                                if (matches && matches.length === 3) {
-                                    let ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
-                                    let base64Data = matches[2];
-                                    spFolder.file(`image_${imgIdx + 1}.${ext}`, base64Data, {base64: true});
-                                }
-                            }
-                        });
-                    }
-                });
-
-                zip.file("data.json", JSON.stringify(exportDb, null, 2));
-
-                const content = await zip.generateAsync({type: "blob"});
+            setTimeout(() => {
+                const exportDb = JSON.parse(JSON.stringify(db));
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportDb, null, 2));
                 
                 const now = new Date();
                 const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}-${String(now.getSeconds()).padStart(2,'0')}`;
-                const filename = `blue_flag_mobile_updated_${timestamp}.zip`;
+                const filename = `blue_flag_data_${timestamp}.json`;
 
                 const a = document.createElement('a');
-                a.href = URL.createObjectURL(content);
+                a.href = dataStr;
                 a.download = filename;
                 a.click();
-                URL.revokeObjectURL(a.href);
-
+                
                 hideLoading();
-                showToast("สำรองข้อมูลสำเร็จ", `บันทึกไฟล์ ${filename} เรียบร้อยแล้ว`);
+                showToast("สำเร็จ", `บันทึกไฟล์ ${filename} เรียบร้อยแล้ว`);
             }, 100);
         }
     </script>
